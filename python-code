@@ -1,0 +1,74 @@
+
+import pandas as pd
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+import numpy as np
+from sklearn.neighbors import KNeighborsClassifier
+import matplotlib.pyplot as plt
+from sklearn import metrics
+from sklearn.metrics import confusion_matrix
+
+#  loading csv into a data frame and printing the data frame
+wine = pd.read_csv('winequality.csv')
+print(wine)
+
+# defining features as X and target as y
+X = wine.iloc[:, 0:11]
+y = wine.iloc[:, 11]
+# standardizing X
+scaler = StandardScaler()
+scaler.fit(X)
+X = pd.DataFrame(scaler.transform(X), columns=X.columns)
+# printing the standardized attribute data frame
+print(X)
+
+# partioning data into train and test
+# train will be size 0.75 and test will be size 0.25
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.25, random_state=2021, stratify=y)
+# then partitioning train further into trainA and trainB, which are 0.6 and 0.15, respectively
+X_trainA, X_trainB, y_trainA, y_trainB = train_test_split(X_train, y_train, train_size=0.8, random_state=2021, stratify=y_train)
+
+# making range of k values to be 1-31 inclusive
+neighbors = range(1, 31)
+# setting range of train accuracy
+trainAccuracyA = np.empty(30)
+trainAccuracyB = np.empty(30)
+# for loop to create KNN model for each value in k range
+# creating a training accuracy score for each k value in range
+for k in neighbors:
+    kNN = KNeighborsClassifier(n_neighbors=k)
+    kNN.fit(X_trainA, y_trainA)
+    y_pred = kNN.predict(X_test)
+    trainAccuracyA[k-1] = kNN.score(X_trainA, y_trainA)
+    trainAccuracyB[k-1] = kNN.score(X_trainB, y_trainB)
+
+# plotting accuracy for trainA and trainB in order to figure out best k value
+plt.plot(neighbors, trainAccuracyA, label='TrainA Accuracy')
+plt.plot(neighbors, trainAccuracyB, label='TrainB Accuracy')
+plt.xticks(neighbors)
+plt.legend()
+plt.title('kNN: Varying Number of Neighbors')
+plt.xlabel('k = Number of Neighbors')
+plt.ylabel('Accuracy')
+plt.show()
+# Looking at the plot, the best value of k is either 20 or 27 because these values show the highest accuracy for TrainB.
+
+# using the best value of k, 27, creating a model with predictions
+kNN = KNeighborsClassifier(n_neighbors=20)
+kNN.fit(X_train, y_train)
+y_pred = kNN.predict(X_test)
+# creating a confusion matrix to compare actual vs. predicted wine quality
+cf = confusion_matrix(y_test, y_pred)
+# printing and plotting the confusion matrix
+print(cf)
+metrics.plot_confusion_matrix(kNN, X_test, y_test)
+plt.show()
+
+# printing test data frame and adding two columns: 1) quality from the original data frame and 2) predicted quality
+# which was derived from y_pred in the model
+X_test['Quality'] = wine['Quality']
+X_test['Predicted Quality'] = y_pred
+print(X_test)
+
+# printing accuracy score of kNN model on test data frame
+print(metrics.accuracy_score(y_test, y_pred))
